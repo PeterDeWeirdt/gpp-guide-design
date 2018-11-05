@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Top-level package for final_project."""
+"""Top-level package for utils."""
 from pkg_resources import get_distribution, DistributionNotFound
 
 __author__ = """Peter DeWeirdt"""
