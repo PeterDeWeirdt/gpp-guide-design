@@ -8,6 +8,7 @@ luigi = "*"
 pandas = "*"
 biopython = "*"
 regex = "*"
+sklearn = "*"
 
 [dev-packages]
 pytest = "*"

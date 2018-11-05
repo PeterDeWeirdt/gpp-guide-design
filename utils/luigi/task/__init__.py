@@ -110,4 +110,5 @@ class SaltedOutput:
     def __get__(self, task, cls):
         # Determine the path etc here
         return lambda: luigi.LocalTarget(os.path.join(self.base_dir,
-                                         self.file_pattern.format(task=task, hash=get_salted_version(task)[:8]) + self.ext))
+                                         self.file_pattern.format(task=task, hash=get_salted_version(task)[:8]) + self.ext),
+                                         **self.target_kwargs)

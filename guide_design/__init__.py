@@ -2,7 +2,6 @@
 
 """Top-level package for final_project."""
 from pkg_resources import get_distribution, DistributionNotFound
-from utils import hashing
 
 __author__ = """Peter DeWeirdt"""
 __email__ = 'petedeweirdt@gmail.com'
@@ -16,5 +15,3 @@ except DistributionNotFound:
         os.path.dirname(os.path.dirname(__file__))
     )
 
-def my_hash():
-    print(hashing.hash_str('abc'))
