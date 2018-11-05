@@ -18,4 +18,4 @@ class RS2CombData(luigi.ExternalTask):
     "Resistence data from Rule Set 2"
     __version__ = '0.1'
     def output(self):
-        return luigi.LocalTarget('./data/RS2_data/V3_data.xlsx')
+        return luigi.LocalTarget('./data/RS2_data/V3_data.csv')
