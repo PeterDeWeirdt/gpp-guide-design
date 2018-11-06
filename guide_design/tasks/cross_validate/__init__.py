@@ -11,7 +11,7 @@ import pickle
 class CrossValidate(luigi.Task):
     __version__ = '0.3'
     model_str = luigi.Parameter()
-    folds = luigi.IntParameter()
+    folds = luigi.IntParameter(default=10)
     param_grid = luigi.DictParameter()
     requires = task.Requires()
 

@@ -1,11 +1,12 @@
 import luigi
 from guide_design.tasks.featurize import Featurize
 from guide_design.tasks.cross_validate import CrossValidate
+from guide_design.tasks.model import BestModel, PredictModel
 import numpy as np
 
 
 if __name__ == '__main__':
-    stage = 'cv'
+    stage = 'predict'
     if stage == 'feat':
         luigi.build([Featurize(activity_column = 'score_drug_gene_rank',
                                kmer_column = '30mer',
@@ -34,3 +35,7 @@ if __name__ == '__main__':
                                                           'min_samples_split': np.linspace(0.2,0.4,1).tolist(),
                                                           'subsample': [0.8]}}.items()],
                     local_scheduler=True, workers=4)
+    elif stage == 'model':
+        luigi.build([BestModel()], local_scheduler=True, workers=3)
+    elif stage == 'predict':
+        luigi.build([PredictModel()], local_scheduler =True, workers=3)
