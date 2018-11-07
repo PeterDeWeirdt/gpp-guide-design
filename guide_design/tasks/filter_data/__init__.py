@@ -1,4 +1,4 @@
-from ..get_data import ResData, FcData
+from ..get_data import ResData, FcData, Cpf1_A375_Controls, Cpf1_A375_Control_Context
 import luigi
 from utils.luigi import task
 
@@ -16,6 +16,5 @@ class CombineFilterData(luigi.Task):
         reqs = self.requires()
         fc_data = reqs['fc_data'].output()
         res_data = reqs['res_data'].output()
-
 
 

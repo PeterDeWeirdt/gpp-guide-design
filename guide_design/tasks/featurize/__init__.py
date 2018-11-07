@@ -6,7 +6,7 @@ import pandas as pd
 
 
 class Featurize(luigi.Task):
-    __version__ = '0.1'
+    __version__ = '0.2'
     activity_column = luigi.Parameter()
     kmer_column = luigi.Parameter()
     features = luigi.DictParameter()
@@ -29,5 +29,6 @@ class Featurize(luigi.Task):
                                             self.pam_length, self.guide_start,
                                             self.guide_length)
         featurized_kmers['activity'] = interim_mat[self.activity_column]
+        featurized_kmers['kmer'] = interim_mat[self.kmer_column]
         with self.output().open('w') as f:
             featurized_kmers.to_csv(f)

@@ -11,7 +11,7 @@ import pickle
 class CrossValidate(luigi.Task):
     __version__ = '0.3'
     model_str = luigi.Parameter()
-    folds = luigi.IntParameter()
+    folds = luigi.IntParameter(default=10)
     param_grid = luigi.DictParameter()
     requires = task.Requires()
 
@@ -36,7 +36,8 @@ class CrossValidate(luigi.Task):
         with featurized.output().open('r') as f:
             featurized_df = pd.read_csv(f)
         y = featurized_df['activity']
-        X = featurized_df.loc[:, featurized_df.columns != 'activity']
+        X = featurized_df.loc[:, featurized_df.columns != 'activity' or
+                                 featurized_df.columns != 'kmer']
         if self.model_str == 'GB':
             model = ensemble.GradientBoostingRegressor(n_estimators=100,
                                                        min_samples_leaf=3)
