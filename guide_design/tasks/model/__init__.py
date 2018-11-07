@@ -68,8 +68,9 @@ class PredictModel(luigi.Task):
         with reqs['test_mat'].output().open('r') as f:
             test_mat = pd.read_csv(f)
         y = test_mat['activity']
-        X = test_mat.loc[:, test_mat.columns != 'activity']
+        X = test_mat.loc[:, test_mat.columns != 'activity' or
+                            test_mat.columns != 'kmer']
         predictions = model.predict(X)
-        prediction_mat = pd.DataFrame({'true': y, 'predicted': predictions})
+        prediction_mat = pd.DataFrame({'kmer': test_mat['kmer'], 'true': y, 'predicted': predictions})
         with self.output().open('w') as f:
             prediction_mat.to_csv(f)

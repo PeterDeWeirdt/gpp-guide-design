@@ -9,6 +9,7 @@ pandas = "*"
 biopython = "*"
 regex = "*"
 sklearn = "*"
+xlrd = "*"
 
 [dev-packages]
 pytest = "*"
