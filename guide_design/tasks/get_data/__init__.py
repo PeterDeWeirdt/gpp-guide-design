@@ -20,8 +20,7 @@ class RS2CombData(luigi.ExternalTask):
     def output(self):
         return luigi.LocalTarget('./data/RS2_data/V3_data.csv')
 
-class RS2model(luigi.ExternalTask):
+class TestData(luigi.ExternalTask):
     __version__ = '0.1'
     def output(self):
-        return luigi.LocalTarget('./data/RS2_outputs')
-
+        return luigi.LocalTarget('./data/raw/SpCas9_test_guides.csv')

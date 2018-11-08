@@ -1,4 +1,4 @@
-from ..featurize import Featurize
+from ..featurize import FeaturizeTrain
 import luigi
 from utils.luigi import task
 import pandas as pd
@@ -6,6 +6,7 @@ from sklearn import ensemble
 from sklearn import linear_model
 from sklearn import model_selection
 import pickle
+from ..get_data import RS2CombData
 
 
 class CrossValidate(luigi.Task):
@@ -15,9 +16,9 @@ class CrossValidate(luigi.Task):
     param_grid = luigi.DictParameter()
     requires = task.Requires()
 
-    featurized = task.Requirement(Featurize, activity_column = 'score_drug_gene_rank',
-                                            kmer_column = '30mer',
-                                            features = {'Pos. Ind. 1mer': True,
+    featurized = task.Requirement(FeaturizeTrain, activity_column ='score_drug_gene_rank',
+                                  kmer_column = '30mer',
+                                  features = {'Pos. Ind. 1mer': True,
                                                         'Pos. Ind. 2mer': True,
                                                         'Pos. Ind. 3mer': False,
                                                         'Pos. Dep. 1mer': True,
@@ -25,8 +26,9 @@ class CrossValidate(luigi.Task):
                                                         'Pos. Dep. 3mer': False,
                                                         'GC content': True,
                                                         'Tm': True},
-                                            guide_start = 5, guide_length = 20,
-                                            pam_start = 25, pam_length = 3)
+                                  guide_start = 5, guide_length = 20,
+                                  pam_start = 25, pam_length = 3,
+                                  InterimTask = RS2CombData)
 
     output = task.SaltedOutput(base_dir='data/cv', ext='.pickle', format=luigi.format.Nop)
 
@@ -36,8 +38,7 @@ class CrossValidate(luigi.Task):
         with featurized.output().open('r') as f:
             featurized_df = pd.read_csv(f)
         y = featurized_df['activity']
-        X = featurized_df.loc[:, featurized_df.columns != 'activity' or
-                                 featurized_df.columns != 'kmer']
+        X = featurized_df[featurized_df.columns.difference(['activity', 'kmer'])]
         if self.model_str == 'GB':
             model = ensemble.GradientBoostingRegressor(n_estimators=100,
                                                        min_samples_leaf=3)
