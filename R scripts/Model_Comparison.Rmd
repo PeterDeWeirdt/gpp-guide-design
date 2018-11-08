@@ -1,0 +1,100 @@
+---
+title: "website versus azimuth"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+library(pheatmap)
+library(gdata)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(plyr)
+library(igraph)
+library(RColorBrewer)
+library(ggrepel)
+library(gridExtra)
+library(fossil)
+library(e1071)
+library(data.table)
+library(ggpmisc)
+library(ggpubr)
+
+opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+## Comparing With Web Predictions
+
+```{r web_predicts}
+website = read.csv('/Users/pdeweird/Documents/GPP-computation/Azimuth/azimuth/data/test200website.csv')
+azimuth = read.csv('/Users/pdeweird/Documents/GPP-computation/Azimuth/azimuth/data/SpCas9_test_guides_azimuth_predictions.csv')
+azimuth_website = inner_join(azimuth, website, by = c('kmer' = 'sgRNA.Context.Sequence'))
+ggplot(azimuth_website) +
+  aes(x=predicted, y=On.Target.Efficacy.Score) +
+  geom_point() +
+  xlab('Code Prediction') +
+  ylab('Website Prediction') +
+  coord_fixed()
+ggsave('/Users/pdeweird/Documents/GPP-computation/Azimuth/azimuth/data/web_v_code.pdf')
+```
+
+## azimuth vs my own
+
+```{r}
+hash = '381cc764'
+my_preds = read.csv(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/predictions/PredictModel-',
+                          hash,'.csv', sep = ''))
+test_mat = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/SpCas9_test_guides.csv')
+azimuth_my_test = inner_join(my_preds,azimuth, by = 'kmer', suffix = c('.2.1', '.2')) %>%
+  inner_join(test_mat, by=c('kmer' = 'X30mer'))
+ggplot(azimuth_my_test) +
+  aes(x=predicted.2, y=predicted.2.1) +
+  geom_point(alpha = 0.5) +
+  theme(aspect.ratio = 1) +
+  geom_abline(slope = 1, intercept = 0, color = 'blue') +
+  stat_cor(method = 'spearman')
+ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/2v',hash,'.pdf', sep = ''))
+```
+
+#Both vs test data
+
+```{r}
+my_preds['Model'] = '2.1'
+azimuth['Model'] = '2.0'
+columnar_data = bind_rows(my_preds, azimuth) %>%
+  inner_join(test_mat, by=c('kmer' = 'X30mer'))
+ggplot(columnar_data) +
+  aes(x=true, y=predicted, color = Model) +
+  theme(aspect.ratio = 1) +
+  geom_point(alpha=0.5) +
+  geom_abline(slope = 1, intercept = 0, color = 'blue') +
+  stat_cor(method = 'spearman', color = 'black') +
+  facet_wrap('Model') 
+ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/TrueV',hash,'.pdf', sep = ''), 
+       height = 5, width = 7)
+```
+
+```{r}
+baseline_correlation = test_data %>%
+  group_by(Gene) %>%
+  dplyr::summarise(Rep.Spearman = cor(Rep.A.LFC.From.Dropout, Rep.B.LFC.From.Dropout, method = 'spearman'))
+
+columnar_data %>%
+  group_by(Model, Gene) %>%
+  dplyr::summarise(spearman = cor(true, predicted, method = 'spearman')) %>%
+  dplyr::inner_join(baseline_correlation, by = 'Gene') %>%
+  mutate(Spearman.Fraction = spearman/Rep.Spearman) %>%
+  ggplot() +
+  aes(x=Gene, y=Model, fill=Spearman.Fraction, label=round(Spearman.Fraction, 3)) +
+  geom_tile() +
+  scale_fill_gradient(low = "lightyellow", high = 'darkred') +
+  geom_text() +
+  coord_equal()
+ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/TrueV',hash,
+       'Genes.pdf', sep=''), height = 5, width = 7)
+
+```
+
+
