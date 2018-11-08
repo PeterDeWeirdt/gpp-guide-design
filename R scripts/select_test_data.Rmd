@@ -1,0 +1,118 @@
+---
+title: "SpCas9 Validation Set"
+output: html_document
+author: "Peter DeWeirdt"
+date: "November 7, 2018"
+fontsize: 11pt
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+library(pheatmap)
+library(gdata)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(plyr)
+library(igraph)
+library(RColorBrewer)
+library(ggrepel)
+library(gridExtra)
+library(fossil)
+library(e1071)
+library(data.table)
+setwd('~/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/')
+
+opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+## Selecting Genes
+
+We consider 47 genes tested across 3 drug assays: Selumetinib and A133 in Meljuso cells, as well as Talazoparib (low dose) in A375 cells. In order to select genes from these assays, we look for genes such that:
+
+1. Pearson correlation between replicates is significant at the 1e-4 level
+2. The Average of the Avg.LFC = (Rep.A.LFC + Rep.B.LFC)/2 for gene and condition specific guides is +/- one standard deviation from zero
+3. The gene is not already in the training set
+
+With this criteria we select nine genes visualized below:
+
+```{r filt}
+meljuso_raw = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/Meljuso_Cas9_Test_Filt.csv')
+a375_raw = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/A375_Cas9_Test_Filt.csv')
+a375_raw['Cell'] = 'A375'
+a375_30mer = inner_join(a375_raw, meljuso_raw %>% select(c('Construct.Barcode', 'X30mer')) %>%
+                          distinct(), by = 'Construct.Barcode') 
+meljuso_annotation = inner_join(meljuso_raw, a375_raw %>% select(c('Construct.Barcode', 'Annotation')), 
+                                by = 'Construct.Barcode')
+joined_data = bind_rows(a375_30mer, meljuso_annotation) %>%
+  dplyr::mutate(Avg.LFC = (Rep.A.LFC.From.Dropout + Rep.B.LFC.From.Dropout)/2) %>%
+  dplyr::mutate(gene_condition = paste(Gene, Condition, sep = '_'))
+
+conditions = unique(joined_data$Condition)
+genes = unique(joined_data$Gene)
+rows = length(conditions)*length(genes)
+gene_summary = data.frame(cell = rep(NA, rows), condition = rep(NA, rows), gene = rep(NA, rows), 
+                          Avg.Avg.LFC.pval = rep(NA, rows), 
+                          Avg.Avg.LFC = rep(NA, rows), pearson = rep(NA, rows), pearson.pvalue = rep(NA, rows),
+                          Avg.Avg.LFC.sd = rep(NA, rows))
+i = 1
+for (condition in conditions) {
+  condition_df = joined_data %>%
+    filter(Condition == condition)
+  cond_sd = (condition_df %>% select(Avg.LFC) %>% unlist() %>% sd())
+  for (gene in genes) {
+    gene_df = condition_df %>%
+      filter(Gene == gene)
+    no_gene_df = condition_df %>%
+      filter(Gene != gene)
+    gene_summary[i, 'cell'] = unique(gene_df$Cell)
+    gene_summary[i, 'condition'] = condition
+    gene_summary[i, 'gene'] = gene
+    avg.avg.lfc = mean(gene_df$Avg.LFC)
+    gene_summary[i, 'Avg.Avg.LFC'] = avg.avg.lfc
+    pearson = cor.test(gene_df$Rep.A.LFC.From.Dropout, gene_df$Rep.B.LFC.From.Dropout)
+    gene_summary[i, 'pearson'] = pearson$estimate
+    gene_summary[i, 'pearson.pvalue'] = pearson$p.value
+    n_guides = nrow(gene_df)
+    null_avg_avg_lfc = rep(NA, n_guides)
+    n_resamps = 1000
+    for(j in 1:n_resamps) {
+      null_avg_avg_lfc[j] = mean(sample(condition_df$Avg.LFC, n_guides))
+    }
+    
+    gene_summary[i, 'Avg.Avg.LFC.pval'] = min(sum(avg.avg.lfc < null_avg_avg_lfc), 
+                                              sum(avg.avg.lfc > null_avg_avg_lfc))/n_resamps
+    gene_summary[i, 'Avg.Avg.LFC.sd'] =  abs(avg.avg.lfc) > cond_sd                                 
+    gene_summary[i, 'n_guides'] = n_guides
+    i = i + 1
+  }
+}
+train_genes = c('CCDC101', 'CUL3', 'HPRT1', 'MED12', 'NF1', 'NF2', 'TADA1', 'TADA2B')
+test_gene_summary = gene_summary %>% filter(Avg.Avg.LFC.sd == TRUE & pearson.pvalue < 1e-4 & !(gene %in% train_genes)) %>%
+  dplyr::mutate(gene_condition = paste(gene, condition, sep = '_'))
+test_data = joined_data %>% filter(gene_condition %in% test_gene_summary$gene_condition)
+ggplot(test_data)+
+  aes(y=Rep.B.LFC.From.Dropout, x=Rep.A.LFC.From.Dropout, color = Condition) +
+  geom_point(alpha = 0.5) +
+  theme_classic() +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'dotted') +
+  facet_wrap('Gene') +
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/testdata.pdf')
+
+```
+
+From these genes we obtain a test set of 2517 guides. 
+
+```{r output}
+output_data = test_data %>%
+  group_by(Gene) %>%
+  dplyr::mutate(percentile = rank(abs(Avg.LFC))/n()) %>%
+  write.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/SpCas9_test_guides.csv', 
+             row.names = FALSE)
+```
+
+

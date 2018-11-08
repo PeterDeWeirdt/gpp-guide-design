@@ -34,6 +34,6 @@ if __name__ == '__main__':
     elif stage == 'model':
         luigi.build([BestModel()], local_scheduler=True, workers=2)
     elif stage == 'predict':
-        luigi.build([PredictModel()], local_scheduler=True, workers=1)
+        luigi.build([PredictModel()], local_scheduler=True, workers=3)
     elif stage == 'fasta':
         luigi.build([Fasta(seq_col = '30mer')], local_scheduler=True)

@@ -24,3 +24,8 @@ class TestData(luigi.ExternalTask):
     __version__ = '0.1'
     def output(self):
         return luigi.LocalTarget('./data/raw/SpCas9_test_guides.csv')
+
+class AzimuthPredictions(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/')

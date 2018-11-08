@@ -4,8 +4,8 @@ from utils.luigi import task
 import pickle
 import numpy as np
 from ..featurize import FeaturizeTrain, FeaturizeTest
+from ..featurize import TestData
 import pandas as pd
-
 
 class BestModel(luigi.Task):
     __version__ = '0.2'
@@ -38,6 +38,17 @@ class BestModel(luigi.Task):
 
         with self.output().open('wb') as f:
             pickle.dump(best_estimator, f)
+
+class ModelCoefficients(luigi.Task):
+    __version__ = '0.1'
+    model = task.Requirement(BestModel)
+
+    requires = task.Requires()
+
+    output = task.SaltedOutput(base_dir='data/figures', ext='.csv')
+
+    def run(self):
+        ...
 
 class PredictModel(luigi.Task):
     __version__ = '0.2'
@@ -72,37 +83,7 @@ class PredictModel(luigi.Task):
         with self.output().open('w') as f:
             prediction_mat.to_csv(f)
 
-class PredictAzimuth(luigi.task):
-    __version__ = '0.2'
 
-    requires = task.Requires()
-    model = task.Requirement(BestModel)
-    test_mat = task.Requirement(FeaturizeTest, activity_column='percentile',
-                                kmer_column='X30mer',
-                                features={'Pos. Ind. 1mer': True,
-                                          'Pos. Ind. 2mer': True,
-                                          'Pos. Ind. 3mer': False,
-                                          'Pos. Dep. 1mer': True,
-                                          'Pos. Dep. 2mer': True,
-                                          'Pos. Dep. 3mer': False,
-                                          'GC content': True,
-                                          'Tm': True},
-                                guide_start=5, guide_length=20,
-                                pam_start=25, pam_length=3)
 
-    output = task.SaltedOutput(base_dir='data/predictions', ext='.csv')
-
-    def run(self):
-        reqs = self.requires()
-        with reqs['model'].output().open('rb') as f:
-            model = pickle.load(f)
-        with reqs['test_mat'].output().open('r') as f:
-            test_mat = pd.read_csv(f)
-        y = test_mat['activity']
-        X = test_mat[test_mat.columns.difference(['activity', 'kmer'])]
-        predictions = model.predict(X)
-        prediction_mat = pd.DataFrame({'kmer': test_mat['kmer'], 'true': y, 'predicted': predictions})
-        with self.output().open('w') as f:
-            prediction_mat.to_csv(f)
 
 

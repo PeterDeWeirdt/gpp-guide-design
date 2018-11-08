@@ -10,6 +10,7 @@ biopython = "*"
 regex = "*"
 sklearn = "*"
 xlrd = "*"
+azimuth = "*"
 
 [dev-packages]
 pytest = "*"
