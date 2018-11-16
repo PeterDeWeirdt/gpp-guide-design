@@ -73,10 +73,10 @@ def get_salted_version(task):
 
     # Note that order is important and impacts the hash - if task
     # requirements are a dict, then consider doing this is sorted order
-    msg += ','.join([get_salted_version(req)[:8] for req in luigi.task.flatten(task.requires())])
+    msg += '|'.join([get_salted_version(req)[:8] for req in luigi.task.flatten(task.requires())])
 
     # Uniquely specify this task
-    msg += ' ' + ','.join([
+    msg += '\t' + '|'.join([
 
             # Basic capture of input type
             task.__class__.__name__,
@@ -93,7 +93,7 @@ def get_salted_version(task):
             if param.significant
         ]
     )
-    log_str = msg + ' ' + sha256(msg.encode()).hexdigest()[:8] + '\n'
+    log_str = msg + '\t' + sha256(msg.encode()).hexdigest()[:8] + '\n'
     if log_str not in open('data/hash.txt').read():
         with open('data/hash.txt', 'a') as f:
             f.write(log_str)

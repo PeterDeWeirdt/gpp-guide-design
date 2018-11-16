@@ -43,44 +43,51 @@ ggsave('/Users/pdeweird/Documents/GPP-computation/Azimuth/azimuth/data/web_v_cod
 ## azimuth vs my own
 
 ```{r}
-hash = '381cc764'
-my_preds = read.csv(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/predictions/PredictModel-',
-                          hash,'.csv', sep = ''))
+RS2_preds = read.csv(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/predictions/PredictModel-',
+                          '6095e6b4','.csv', sep = '')) %>%
+  mutate(Model = 'RS2')
+Dimer_preds = read.csv(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/predictions/PredictModel-',
+                          'febe0094','.csv', sep = '')) %>%
+  mutate(Model = 'Dimer')
 test_mat = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/SpCas9_test_guides.csv')
-azimuth_my_test = inner_join(my_preds,azimuth, by = 'kmer', suffix = c('.2.1', '.2')) %>%
-  inner_join(test_mat, by=c('kmer' = 'X30mer'))
-ggplot(azimuth_my_test) +
-  aes(x=predicted.2, y=predicted.2.1) +
-  geom_point(alpha = 0.5) +
-  theme(aspect.ratio = 1) +
-  geom_abline(slope = 1, intercept = 0, color = 'blue') +
-  stat_cor(method = 'spearman')
-ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/2v',hash,'.pdf', sep = ''))
+azimuth['Model'] = 'Azimuth'
 ```
 
 #Both vs test data
 
 ```{r}
-my_preds['Model'] = '2.1'
-azimuth['Model'] = '2.0'
-columnar_data = bind_rows(my_preds, azimuth) %>%
+columnar_data = bind_rows(Dimer_preds, RS2_preds, azimuth) %>%
   inner_join(test_mat, by=c('kmer' = 'X30mer'))
+columnar_data['true'] = round(columnar_data$true, 4) 
 ggplot(columnar_data) +
   aes(x=true, y=predicted, color = Model) +
   theme(aspect.ratio = 1) +
   geom_point(alpha=0.5) +
-  geom_abline(slope = 1, intercept = 0, color = 'blue') +
+  geom_smooth(method='lm', color = 'black') +
   stat_cor(method = 'spearman', color = 'black') +
   facet_wrap('Model') 
+spread_data = spread(columnar_data %>% select(c('predicted', 'kmer', 'true', 'Model')), 'Model', 'predicted')
+corr_map = melt(cor(spread_data %>% select(-'kmer'), method = 'spearman'))
+corr_map['Var1'] = factor(corr_map$Var1, levels = c('Azimuth', 'RS2', 'Dimer', 'true'))
+corr_map['Var2'] = factor(corr_map$Var2, levels = c('Azimuth', 'RS2', 'Dimer', 'true'))
+corr_map
+ggplot(corr_map) +
+  aes(x=Var1, y=Var2, fill = value, label=round(value, 3)) +
+  geom_tile(color = 'black') +
+  scale_fill_gradient(low = 'lightyellow',high = 'red4', name = 'Spearman') +
+  geom_text() +
+  coord_equal() +
+  xlab('') + 
+  ylab('') 
 ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/figures/TrueV',hash,'.pdf', sep = ''), 
        height = 5, width = 7)
 ```
 
 ```{r}
-baseline_correlation = test_data %>%
+baseline_correlation = test_mat %>%
   group_by(Gene) %>%
   dplyr::summarise(Rep.Spearman = cor(Rep.A.LFC.From.Dropout, Rep.B.LFC.From.Dropout, method = 'spearman'))
-
+columnar_data['Model'] = factor(columnar_data$Model, levels = c('Azimuth', 'RS2', 'Dimer')) 
 columnar_data %>%
   group_by(Model, Gene) %>%
   dplyr::summarise(spearman = cor(true, predicted, method = 'spearman')) %>%
@@ -97,4 +104,16 @@ ggsave(paste('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/da
 
 ```
 
+```{r}
+columnar_data %>%
+  dplyr::mutate(d.LFC = abs(Rep.A.LFC.From.Dropout - Rep.B.LFC.From.Dropout), 
+                d.prediction = abs(predicted - true)) %>%
+  ggplot() +
+  aes(x = d.LFC, y=d.prediction) +
+  geom_point() +
+  theme(aspect.ratio = 1) +
+  stat_cor(method = 'spearman', color = 'blue') +
+  geom_smooth(method = 'lm') +
+  facet_wrap('Model')
+```
 

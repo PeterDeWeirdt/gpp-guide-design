@@ -11,6 +11,8 @@ regex = "*"
 sklearn = "*"
 xlrd = "*"
 azimuth = "*"
+numpy = "*"
+scikit-learn = "*"
 
 [dev-packages]
 pytest = "*"

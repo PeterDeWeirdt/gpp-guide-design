@@ -86,16 +86,29 @@ def get_three_nt_pos(dict, context_sequence, nts, context_order):
     return dict
 
 
-def get_thermo(dict, guide_sequence):
+def get_thermo(dict, guide_sequence, context_sequence):
     # Use Biopython to get thermo info. from context and guides
-    dict['Tm, guide'] = MeltingTemp.Tm_NN(guide_sequence)
+    dict['Tm, context'] = MeltingTemp.Tm_NN(context_sequence)
+    dict['Tm, 5mer-15'] = MeltingTemp.Tm_NN(guide_sequence[-5:])
+    dict['Tm, 5mer-3'] = MeltingTemp.Tm_NN(guide_sequence[2:7])
+    dict['Tm, middle'] = MeltingTemp.Tm_NN(guide_sequence[7:-5])
+    return dict
+
+def get_cas9_pam_n(dict, context_sequence, nts):
+    for nt1 in nts:
+        for nt2 in nts:
+            motif = nt1 + 'G' + 'G' + nt2
+            if context_sequence[24:28] == motif:
+                dict['20' + motif] = 1
+            else:
+                dict['20' + motif] = 0
     return dict
 
 def get_context_order(k, pam_start, pam_length, guide_start, guide_length):
     """
 
     :param k: length of kmer
-    :param pam_start:
+    :param pam_start: indexed starting at one
     :param pam_length:
     :param guide_start:
     :param guide_length:
@@ -158,7 +171,9 @@ def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_
         if features['Pos. Dep. 3mer']:
             curr_dict = get_three_nt_pos(curr_dict, context, nts, context_order)
         if features['Tm']:
-            curr_dict = get_thermo(curr_dict, guide_sequence)
+            curr_dict = get_thermo(curr_dict, guide_sequence, context)
+        if features['Cas9 PAM']:
+            curr_dict = get_cas9_pam_n(curr_dict, context, nts)
         feature_dict_list.append(curr_dict)
     feature_matrix = pd.DataFrame(feature_dict_list)
     return feature_matrix

@@ -1,23 +1,23 @@
 import luigi
-from guide_design.tasks.featurize import FeaturizeTrain, FeaturizeTest
+from guide_design.tasks.featurize import FeaturizeTrain, FeaturizeDoenchTest
 from guide_design.tasks.cross_validate import CrossValidate
-from guide_design.tasks.model import BestModel, PredictModel
+from guide_design.tasks.model import BestModel, PredictModel, ModelCoefficients
 from guide_design.tasks.fasta_format import Fasta
-from guide_design.tasks.get_data import TestData
+from guide_design.tasks.get_data import DoenchTestData
 import numpy as np
 
 
 if __name__ == '__main__':
     stage = 'predict'
     if stage == 'feat':
-        luigi.build([FeaturizeTest(activity_column ='percentile',
-                                    kmer_column = 'X30mer',
+        luigi.build([FeaturizeTrain(activity_column ='score_drug_gene_rank',
+                                    kmer_column = '30mer',
                                     features = {'Pos. Ind. 1mer': True,
                                            'Pos. Ind. 2mer': True,
-                                           'Pos. Ind. 3mer': True,
+                                           'Pos. Ind. 3mer': False,
                                            'Pos. Dep. 1mer': True,
                                            'Pos. Dep. 2mer': True,
-                                           'Pos. Dep. 3mer': True,
+                                           'Pos. Dep. 3mer': False,
                                            'GC content': True,
                                            'Tm': True},
                                     guide_start = 5, guide_length = 20,
@@ -34,6 +34,28 @@ if __name__ == '__main__':
     elif stage == 'model':
         luigi.build([BestModel()], local_scheduler=True, workers=2)
     elif stage == 'predict':
-        luigi.build([PredictModel()], local_scheduler=True, workers=3)
+        luigi.build([PredictModel(features={'Pos. Ind. 1mer': True,
+                                            'Pos. Ind. 2mer': True,
+                                            'Pos. Ind. 3mer': False,
+                                            'Pos. Dep. 1mer': True,
+                                            'Pos. Dep. 2mer': True,
+                                            'Pos. Dep. 3mer': False,
+                                            'GC content': True,
+                                            'Tm': True,
+                                            'Cas9 PAM': True},
+                                guide_start = 5, guide_length = 20,
+                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers=4)
     elif stage == 'fasta':
         luigi.build([Fasta(seq_col = '30mer')], local_scheduler=True)
+    elif stage == 'coefs':
+        luigi.build([ModelCoefficients(features={'Pos. Ind. 1mer': True,
+                                            'Pos. Ind. 2mer': True,
+                                            'Pos. Ind. 3mer': False,
+                                            'Pos. Dep. 1mer': True,
+                                            'Pos. Dep. 2mer': True,
+                                            'Pos. Dep. 3mer': False,
+                                            'GC content': True,
+                                            'Tm': True,
+                                            'Cas9 PAM': True},
+                                guide_start = 5, guide_length = 20,
+                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers = 1)
