@@ -20,12 +20,22 @@ class RS2CombData(luigi.ExternalTask):
     def output(self):
         return luigi.LocalTarget('./data/RS2_data/V3_data.csv')
 
-class TestData(luigi.ExternalTask):
+class DoenchTestData(luigi.ExternalTask):
     __version__ = '0.1'
     def output(self):
         return luigi.LocalTarget('./data/raw/SpCas9_test_guides.csv')
+
+class AchillesTestData(luigi.ExternalTask):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/EWS502_BONE_essential.csv')
 
 class AzimuthPredictions(luigi.Task):
     __version__ = '0.1'
     def output(self):
         return luigi.LocalTarget('./data/raw/')
+
+class ScorePredictions(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/ddAUC/Gv2_all_scores.txt')
