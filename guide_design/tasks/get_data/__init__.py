@@ -39,3 +39,18 @@ class ScorePredictions(luigi.Task):
     __version__ = '0.1'
     def output(self):
         return luigi.LocalTarget('./data/raw/ddAUC/Gv2_all_scores.txt')
+
+class OofRes(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/RES_data_mutation_rates.csv')
+
+class OofFc(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/FC_OOF_activity.csv')
+
+class OofGv2(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/Gv2_oof_scores.csv')
