@@ -1,5 +1,6 @@
 import pandas as pd
 from Bio.SeqUtils import MeltingTemp
+import numpy as np
 
 
 def get_frac_g_or_c(dict, guide_sequence):
@@ -134,7 +135,18 @@ def get_guide_sequence(context, guide_start, guide_length):
     return context[guide_start-1:(guide_start-1 + guide_length)]
 
 
-def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_length):
+def get_physiochemical(curr_dict, guide, nts, physiochemical_data):
+    nt_counts = np.array([guide.count(nt1+nt2) for nt1 in nts for nt2 in nts])
+    dinucs = physiochemical_data['Dinucleotides']
+    no_dinucs = physiochemical_data.drop(columns=['Dinucleotides'])
+    numeric_physio = np.transpose(np.array(no_dinucs))
+    physio_sum = np.sum(nt_counts*numeric_physio, axis = 1)
+    curr_dict = {**curr_dict, **dict(zip(no_dinucs.keys(), physio_sum))}
+    return curr_dict
+
+
+def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_length,
+                     oof_mutation_rates=None):
     """Take guides and encodes for modeling
 
     :param kmers: vector with
@@ -145,6 +157,7 @@ def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_
     :param guide_end: int
     :return: featurized matrix
     """
+    physiochemical_data = pd.read_csv('data/raw/physiochem.csv')
     k = len(kmers[0])
     context_order = get_context_order(k, pam_start, pam_length, guide_start, guide_length)
     print(context_order)
@@ -174,6 +187,10 @@ def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_
             curr_dict = get_thermo(curr_dict, guide_sequence, context)
         if features['Cas9 PAM']:
             curr_dict = get_cas9_pam_n(curr_dict, context, nts)
+        if features['Physio']:
+            curr_dict = get_physiochemical(curr_dict, guide_sequence, ['A','C','G','T'], physiochemical_data)
+        if features['OOF Mutation Rate']:
+            curr_dict['OOF Mutation Rate'] = oof_mutation_rates[i]
         feature_dict_list.append(curr_dict)
     feature_matrix = pd.DataFrame(feature_dict_list)
     return feature_matrix

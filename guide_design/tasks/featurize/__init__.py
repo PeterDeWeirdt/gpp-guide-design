@@ -1,4 +1,5 @@
 from ..get_data import RS2CombData, DoenchTestData, AchillesTestData
+from ..filter_data import FilteredRS2Data, FilteredAchillesData
 import luigi
 from utils.luigi import task
 from utils.featurization import featurize_guides
@@ -28,7 +29,8 @@ class BaseFeaturize(luigi.Task):
         kmers = interim_mat[self.kmer_column]
         featurized_kmers = featurize_guides(kmers, self.features, self.pam_start,
                                             self.pam_length, self.guide_start,
-                                            self.guide_length)
+                                            self.guide_length,
+                                            oof_mutation_rates=interim_mat['OOF mutation rate'])
         featurized_kmers['activity'] = interim_mat[self.activity_column]
         featurized_kmers['kmer'] = interim_mat[self.kmer_column]
         with self.output().open('w') as f:
@@ -37,7 +39,7 @@ class BaseFeaturize(luigi.Task):
 
 class FeaturizeTrain(BaseFeaturize):
 
-    filtered = task.Requirement(RS2CombData)
+    filtered = task.Requirement(FilteredRS2Data)
 
 
 
@@ -48,7 +50,7 @@ class FeaturizeDoenchTest(BaseFeaturize):
 
 class FeaturizeAchillesTest(BaseFeaturize):
 
-    filtered = task.Requirement(AchillesTestData)
+    filtered = task.Requirement(FilteredAchillesData)
 
 
 class Standardize(luigi.Task):

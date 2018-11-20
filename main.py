@@ -4,22 +4,27 @@ from guide_design.tasks.cross_validate import CrossValidate
 from guide_design.tasks.model import BestModel, PredictModel, ModelCoefficients
 from guide_design.tasks.fasta_format import Fasta
 from guide_design.tasks.get_data import DoenchTestData
+from guide_design.tasks.filter_data import FilteredAchillesData, FilteredRS2Data
 import numpy as np
 
 
 if __name__ == '__main__':
-    stage = 'predict'
+    stage = 'coefs'
     if stage == 'feat':
         luigi.build([FeaturizeTrain(activity_column ='score_drug_gene_rank',
                                     kmer_column = '30mer',
                                     features = {'Pos. Ind. 1mer': True,
-                                           'Pos. Ind. 2mer': True,
-                                           'Pos. Ind. 3mer': False,
-                                           'Pos. Dep. 1mer': True,
-                                           'Pos. Dep. 2mer': True,
-                                           'Pos. Dep. 3mer': False,
-                                           'GC content': True,
-                                           'Tm': True},
+                                            'Pos. Ind. 2mer': True,
+                                            'Pos. Ind. 3mer': False,
+                                            'Pos. Dep. 1mer': True,
+                                            'Pos. Dep. 2mer': True,
+                                            'Pos. Dep. 3mer': False,
+                                            'GC content': True,
+                                            'Tm': True,
+                                            'Cas9 PAM': False,
+                                            'Physio': False,
+                                            'OOF Mutation Rate': True
+                                                },
                                     guide_start = 5, guide_length = 20,
                                     pam_start = 25, pam_length = 3)], local_scheduler=True)
     elif stage == 'cv':
@@ -42,9 +47,11 @@ if __name__ == '__main__':
                                             'Pos. Dep. 3mer': False,
                                             'GC content': True,
                                             'Tm': True,
-                                            'Cas9 PAM': True},
+                                            'Cas9 PAM': True,
+                                            'Physio': True,
+                                            'OOF Mutation Rate': True},
                                 guide_start = 5, guide_length = 20,
-                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers=4)
+                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers=3)
     elif stage == 'fasta':
         luigi.build([Fasta(seq_col = '30mer')], local_scheduler=True)
     elif stage == 'coefs':
@@ -56,6 +63,11 @@ if __name__ == '__main__':
                                             'Pos. Dep. 3mer': False,
                                             'GC content': True,
                                             'Tm': True,
-                                            'Cas9 PAM': True},
+                                            'Cas9 PAM': True,
+                                            'Physio': True,
+                                            'OOF Mutation Rate': True},
                                 guide_start = 5, guide_length = 20,
                                 pam_start = 25, pam_length = 3)], local_scheduler=True, workers = 1)
+    elif stage == 'filter':
+        luigi.build([FilteredAchillesData(), FilteredRS2Data()], local_scheduler=True,
+                    workers = 1)
