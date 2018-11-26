@@ -9,7 +9,7 @@ import numpy as np
 
 
 if __name__ == '__main__':
-    stage = 'predict'
+    stage = 'coefs'
     if stage == 'feat':
         luigi.build([FeaturizeTrain(activity_column ='score_drug_gene_rank',
                                     kmer_column = '30mer',
@@ -42,16 +42,18 @@ if __name__ == '__main__':
         luigi.build([PredictModel(features={'Pos. Ind. 1mer': True,
                                             'Pos. Ind. 2mer': True,
                                             'Pos. Ind. 3mer': False,
+                                            'Pos. Ind. Zipper': True,
                                             'Pos. Dep. 1mer': True,
                                             'Pos. Dep. 2mer': True,
                                             'Pos. Dep. 3mer': False,
+                                            'Pos. Dep. Zipper': True,
+                                            'Pos. Ind. Rep.': True,
                                             'GC content': True,
                                             'Tm': True,
                                             'Cas9 PAM': False,
                                             'Physio': True,
-                                            'OOF Mutation Rate': True,
-                                            'Zipper': True,
-                                            'Double Zipper': True},
+                                            'OOF Mutation Rate': False,
+                                            'Double Zipper': False},
                                 guide_start = 5, guide_length = 20,
                                 pam_start = 25, pam_length = 3)], local_scheduler=True, workers=3)
     elif stage == 'fasta':
@@ -60,15 +62,18 @@ if __name__ == '__main__':
         luigi.build([ModelCoefficients(features={'Pos. Ind. 1mer': True,
                                             'Pos. Ind. 2mer': True,
                                             'Pos. Ind. 3mer': False,
+                                            'Pos. Ind. Zipper': True,
                                             'Pos. Dep. 1mer': True,
                                             'Pos. Dep. 2mer': True,
                                             'Pos. Dep. 3mer': False,
+                                            'Pos. Dep. Zipper': True,
+                                            'Pos. Ind. Rep.': True,
                                             'GC content': True,
                                             'Tm': True,
-                                            'Cas9 PAM': True,
+                                            'Cas9 PAM': False,
                                             'Physio': True,
                                             'OOF Mutation Rate': True,
-                                            'Zipper': True},
+                                            'Double Zipper': False},
                                 guide_start = 5, guide_length = 20,
                                 pam_start = 25, pam_length = 3)], local_scheduler=True, workers = 1)
     elif stage == 'filter':

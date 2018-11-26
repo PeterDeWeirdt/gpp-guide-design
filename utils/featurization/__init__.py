@@ -1,6 +1,7 @@
 import pandas as pd
 from Bio.SeqUtils import MeltingTemp
 import numpy as np
+import re
 
 
 def get_frac_g_or_c(dict, guide_sequence):
@@ -144,7 +145,7 @@ def get_physiochemical(curr_dict, guide, nts, physiochemical_data):
     curr_dict = {**curr_dict, **dict(zip(no_dinucs.keys(), physio_sum))}
     return curr_dict
 
-def get_zipper(dict, context_sequence, nts, context_order):
+def get_zipper_pos(dict, context_sequence, nts, context_order):
     for i in range(len(context_order) - 2):
         curr_nts = context_sequence[i] + context_sequence[i+2]
         for nt1 in nts:
@@ -155,6 +156,23 @@ def get_zipper(dict, context_sequence, nts, context_order):
                     dict[key] = 1
                 else:
                     dict[key] = 0
+    return dict
+
+def get_zipper_counts(dict, guide, nts):
+    for nt1 in nts:
+        for nt2 in nts:
+            regex = '(' + nt1 + '(A|C|T|G)' + nt2 + ')'
+            nts_counts = len(re.findall(regex, guide))
+            nts_frac = nts_counts/(len(guide) - 2)
+            dict[nt1 + 'N' + nt2] = nts_frac
+    return dict
+
+def get_rep_counts(dict, context, nts, length):
+    for nt in nts:
+        k_mer = nt*length
+        nts_counts = context.count(k_mer)
+        nts_frac = nts_counts/(len(context) - 2)
+        dict[nt + '*' + str(length)] = nts_frac
     return dict
 
 def get_double_zipper(dict, context_sequence, nts, context_order):
@@ -217,8 +235,12 @@ def featurize_guides(kmers, features, pam_start, pam_length, guide_start, guide_
             curr_dict = get_physiochemical(curr_dict, guide_sequence, ['A','C','G','T'], physiochemical_data)
         if features['OOF Mutation Rate']:
             curr_dict['OOF Mutation Rate'] = oof_mutation_rates[i]
-        if features['Zipper']:
-            curr_dict = get_zipper(curr_dict, context, nts, context_order)
+        if features['Pos. Dep. Zipper']:
+            curr_dict = get_zipper_pos(curr_dict, context, nts, context_order)
+        if features['Pos. Ind. Zipper']:
+            curr_dict = get_zipper_counts(curr_dict, guide_sequence, nts)
+        if features['Pos. Ind. Rep.']:
+            curr_dict = get_rep_counts(curr_dict, context, nts, 4)
         if features['Double Zipper']:
             curr_dict = get_double_zipper(curr_dict, context, nts, context_order)
         feature_dict_list.append(curr_dict)
