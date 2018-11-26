@@ -9,7 +9,7 @@ import pickle
 from luigi.util import inherits
 
 class BaseFeaturize(luigi.Task):
-    __version__ = '0.5'
+    __version__ = '0.6'
     activity_column = luigi.Parameter()
     kmer_column = luigi.Parameter()
     features = luigi.DictParameter()
