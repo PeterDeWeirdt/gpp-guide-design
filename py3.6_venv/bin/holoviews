@@ -1,0 +1,12 @@
+#!/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/py3.6_venv/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'holoviews==1.11.0a11.post39+gd27bb5df','console_scripts','holoviews'
+__requires__ = 'holoviews==1.11.0a11.post39+gd27bb5df'
+import re
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(
+        load_entry_point('holoviews==1.11.0a11.post39+gd27bb5df', 'console_scripts', 'holoviews')()
+    )

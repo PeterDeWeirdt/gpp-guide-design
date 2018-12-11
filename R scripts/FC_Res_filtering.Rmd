@@ -1,0 +1,492 @@
+---
+title: "Rule Set 3 Filtering Scheme and Out of Frame Mutation Rate"
+output: html_document
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+library(pheatmap)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(diptest)
+library(ggpubr)
+library(reshape2)
+library(gridExtra)
+library(data.table)
+library(viridis)
+```
+
+# Filtering
+
+For the Flow Cytometry (FC) and Resistence (RES) data we will filter guides in 2 steps:
+
+1. Filter genes that have low replicate correlation and/or high variability for Log-Fold Change. If there are multiple conditions per gene, then pick the most well correlated.
+2. Filter guides that have high replicate variability for Log-Fold Change (3 standard deviations from the mean), or have no variability at all. 
+
+***
+
+## Human Flow Cytometry Data
+### Gene Filtering
+
+```{r cell filter}
+coallated_humanFC_data = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/coalated_FChuman.csv') 
+Avg_Rep_Cor = data.frame(stringsAsFactors = FALSE)
+i=1
+for (target in unique(coallated_humanFC_data$Target)) {
+  target_data = coallated_humanFC_data %>%
+    filter(Target == target)
+  for (cell in unique(target_data$Cell)) {
+    curr_data = target_data %>% 
+      filter(Cell == cell) 
+    lfc_data = curr_data %>%
+      select(Rep.A.LFC, Rep.B.LFC, Rep.C.LFC, Rep.D.LFC, Rep.E.LFC, Rep.F.LFC, Rep.G.LFC, Rep.H.LFC)
+    Avg_Rep_Cor[i, 'Cell' ] = cell
+    Avg_Rep_Cor[i, 'Gene'] = target
+    Avg_Rep_Cor[i, 'Avg. Rep. Correlation'] = mean(cor(lfc_data)[lower.tri(cor(lfc_data))])
+    Avg_Rep_Cor[i, 'Avg. Variance'] = mean(curr_data$Variance)
+    Avg_Rep_Cor[i, 'Avg.Avg.LFC'] = mean(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Guides'] = nrow(curr_data)
+    Avg_Rep_Cor[i, 'Avg.LFC Variance'] = var(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Dip.Test.P-Val'] = dip.test(curr_data$Avg..LFC, 
+                                                       simulate.p.value = TRUE, B = 2000)$p.value
+    i = i+1
+  }
+}
+table = Avg_Rep_Cor %>% mutate(Remove = (Gene == 'CD13' & Cell == 'NB4') |
+                                 (Gene == 'CD33'& Cell == 'NB4')) %>% 
+  arrange(Remove, -`Avg. Rep. Correlation`) 
+kable(table) %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped', 'hover')) %>%
+  row_spec(which(table$Remove), bold = T, color = "white", background = "#D7261E")
+```
+
+* Guides targetting CD13 are more variable in TF-1 cells, so we will get better seperation between good and bad guides
+
+* Lower technical replicate correlation of CD44 in NB4 is lower
+
+**Note:** Replicates for FC data are technical, not experimental
+
+
+
+### Guide Filtering
+
+* Filter out any guides with high (or no) variability across replicates
+* Guides are highly variability if they have a variance greater than 3 standard deviations from the mean variability 
+
+```{r guide filter}
+gene_filtered_humanFC_data = coallated_humanFC_data %>%
+  mutate(flag = Variance > mean(Variance) + 3*sd(Variance) | Variance == 0)
+guide_filtered_humanFC_data = gene_filtered_humanFC_data %>% 
+  filter(flag == FALSE) 
+removed_table = gene_filtered_humanFC_data %>%
+  filter(flag == TRUE) %>%
+  kable() %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped', 'hover')) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+```{r, results = 'asis'}
+cat(paste('\n* Removed', as.character(sum(gene_filtered_humanFC_data$flag)), 'guides*'))
+```
+
+***
+
+## Mouse Flow Cytometry Data
+### Gene Filtering
+
+```{r}
+coallated_mouse_data = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/MouseFCDataCoallated.csv')
+Avg_Rep_Cor = data.frame()
+i = 1
+for (gene in unique(coallated_mouse_data$Symbol)) {
+    curr_data = coallated_mouse_data %>% 
+      filter(Symbol == gene) 
+    lfc_data = curr_data %>%
+      select(Rep.A.LFC, Rep.B.LFC, Rep.C.LFC, Rep.D.LFC, Rep.E.LFC, Rep.F.LFC)
+    Avg_Rep_Cor[i, 'Gene'] = gene
+    Avg_Rep_Cor[i, 'Avg.Rep.Correlation'] = mean(cor(lfc_data)[lower.tri(cor(lfc_data))])
+    Avg_Rep_Cor[i, 'Avg.Variance'] = mean(curr_data$Variance)
+    Avg_Rep_Cor[i, 'Avg.Avg.LFC'] = mean(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Guides'] = nrow(curr_data)
+    Avg_Rep_Cor[i, 'Avg.LFC Variance'] = var(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Dip.Test.P-Val'] = dip.test(curr_data$Avg..LFC, 
+                                                       simulate.p.value = TRUE, B = 2000)$p.value
+    i = i + 1 
+}
+rm_mouse = c('Cd2', 'Cd53')
+table = Avg_Rep_Cor %>% mutate(Remove = Gene %in% c(rm_mouse, 'Cd3e')) %>% 
+        arrange(Remove, -Avg.Rep.Correlation)
+kable(table) %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped', 'hover')) %>%
+  row_spec(which(table$Remove), bold = T, color = "white", background = "#D7261E")
+```
+
+* Cd53: low LFC variance
+* Cd2, Cd3e: low replicate correlation
+
+### Guide Filtering 
+Remove highly variable guides (variance of LFC's 3 sd from mean)
+
+```{r}
+gene_filtered_mouse_data = coallated_mouse_data %>%
+  filter(!(Symbol %in% rm_mouse)) %>%
+  dplyr::mutate(flag = Variance > (mean(Variance) + 3*sd(Variance)) | Variance == 0)
+guide_filtered_mouse_data = gene_filtered_mouse_data %>% filter(flag == FALSE)
+table= kable(gene_filtered_mouse_data %>% filter(flag == TRUE)) %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped', 'hover')) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+```{r, results = 'asis'}
+cat(paste('\n* Removed', as.character(sum(gene_filtered_mouse_data$flag)), 'guides'))
+```
+
+***
+
+## Human Resistence Data 
+### Gene Filtering
+```{r}
+coallated_humanRES_data = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/HumanRESCoallated.csv') 
+Avg_Rep_Cor = data.frame(stringsAsFactors = FALSE)
+i=1
+for (target in unique(coallated_humanRES_data$Gene.Symbol)) {
+  target_data = coallated_humanRES_data %>%
+    filter(Gene.Symbol == target)
+  for (drug in unique(target_data$Drug)) {
+    curr_data = target_data %>% 
+      filter(Drug == drug) 
+    lfc_data = curr_data %>%
+      select(Rep.A.LFC, Rep.B.LFC, Rep.C.LFC, Rep.D.LFC)
+    Avg_Rep_Cor[i, 'Drug' ] = drug
+    Avg_Rep_Cor[i, 'Gene'] = target
+    Avg_Rep_Cor[i, 'Avg. Rep. Correlation'] = mean(cor(lfc_data)[lower.tri(cor(lfc_data))])
+    Avg_Rep_Cor[i, 'Avg. Variance'] = mean(curr_data$Variance)
+    Avg_Rep_Cor[i, 'Avg.Avg.LFC'] = mean(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Guides'] = nrow(curr_data)
+    Avg_Rep_Cor[i, 'Avg.LFC Variance'] = var(curr_data$Avg..LFC)
+    Avg_Rep_Cor[i, 'Dip.Test.P-Val'] = dip.test(curr_data$Avg..LFC, 
+                                                       simulate.p.value = FALSE, B = 2000)$p.value
+
+    i = i+1
+  }
+}
+table = Avg_Rep_Cor %>%  
+        mutate(Remove = Gene %in% c('PMS2', 'MSH2', 'MSH6','MLH1', 'CUL3') | (Gene == 'MED12' & Drug == 'PLX')) %>%
+        arrange(Remove, -`Avg. Rep. Correlation`)
+kable(table) %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped')) %>%
+  row_spec(which(table$Remove), bold = T, color = "white", background = "#D7261E")
+
+```
+
+* PLX/MED12: lower replicate correlation than AZD/MED12
+* Low replicate correlation for other genes
+**Note:** Replicates are experimental for RES data
+
+### Guide Filtering
+Remove highly variable guides (variance of LFC's 3 sd from mean)
+```{r}
+gene_filtered_humanRES_data = coallated_humanRES_data %>%
+  filter(!(Gene.Symbol %in% c('PMS2', 'MSH2', 'MSH6','MLH1'))) %>%
+  dplyr::mutate(flag = Variance > (mean(Variance) + 3*sd(Variance)) | Variance == 0)
+guide_filtered_humanRES_data = gene_filtered_humanRES_data %>% filter(flag == FALSE)
+table = kable(gene_filtered_humanRES_data %>% filter(flag == TRUE) %>% arrange(-Variance)) %>%
+  kable_styling(full_width=F, bootstrap_options = c('striped', 'hover')) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+```{r, results = 'asis'}
+cat(paste('\n* Removed', as.character(sum(gene_filtered_humanRES_data$flag)), 'guides'))
+```
+
+## Training Set
+```{r}
+human_fc_transcript = data.frame(Target = c('CD13', 'CD33', 'CD15'), Transcript = c('ENST00000300060', 'ENST00000262262', 'ENST00000358752'))
+mouse_annotations = read.csv(
+  '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/SpacerAnnotation_0417_mouse.csv') %>%
+  select('Spacer.Sequence', 'Type')
+human_annotations = read.csv(
+  '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/Spacers_Human_Annotation.csv') %>%
+  select('Spacer.Sequence', 'Type')
+Design_Annotations = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/sgrna-designs-all.csv')
+All_Coallated = coallated_humanFC_data %>%
+  inner_join(human_fc_transcript, by = 'Target') %>%
+  select(Sequence, Target, Transcript) %>%
+  mutate(Organism = 'human') %>%
+  inner_join(human_annotations, by = c('Sequence' = 'Spacer.Sequence')) %>%
+  distinct() %>%
+  bind_rows(coallated_humanRES_data %>%
+               select(Construct.Barcode, Gene.Symbol, Transcript) %>%
+              mutate(Organism = 'human') %>%
+              rename(Sequence = Construct.Barcode, Target = Gene.Symbol) %>%
+              distinct()) %>%
+    bind_rows(coallated_mouse_data %>%
+                select(Sequence, Symbol, Transcript) %>%
+                mutate(Sequence = substring(Sequence, 1, 20)) %>%
+                mutate(Organism = 'mouse') %>%
+                rename(Target = Symbol) %>%
+                inner_join(mouse_annotations, by = c('Sequence' = 'Spacer.Sequence')) %>%
+                distinct()) 
+#write.csv(All_Coallated, '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/ALL_FC_RES_guides_type_annotated.csv')
+
+FORECasT_OOF_predictions = read.csv(
+  '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/OOF_Mutation_Rates_ALL.csv')
+
+All_Context = read.table(file = 
+                           '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/ALL_FC_RES_CONTEXT_NoBlanks.txt', 
+                         sep = '\t', header=TRUE)
+FC_percent_pep = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/Activity_AML_EL4.csv') 
+
+mouseFC_precomb = guide_filtered_mouse_data %>%
+  mutate(Assay_ID = Symbol) %>%
+  select(Avg..LFC, Symbol, Sequence, Assay_ID) %>%
+  rename(Gene = Symbol, kmer = Sequence) %>%
+  mutate(experiment = 'mouseFC', organism = 'mouse') %>%
+  mutate(Guide.Sequence = substr(kmer, 1, 20)) %>%
+  select(-kmer) %>%
+  inner_join(mouse_annotations, by = c('Guide.Sequence' = 'Spacer.Sequence')) %>%
+  filter(Type %in% c('CDS', 'CDS/I', 'I/CDS'))
+humanFC_precomb = guide_filtered_humanFC_data %>%
+  mutate(Assay_ID = paste(Target, Cell, sep = '_')) %>%
+  select(Avg..LFC, Target, Sequence, Assay_ID) %>%
+  rename(Gene = Target, Guide.Sequence = Sequence) %>%
+  mutate(experiment = 'humanFC', organism = 'human') %>%
+  inner_join(human_annotations, by = c('Guide.Sequence' = 'Spacer.Sequence')) %>%
+  filter(Type %in% c('CDS', 'CDS/I', 'I/CDS')) 
+humanRES_precomb = guide_filtered_humanRES_data %>%
+  mutate(Assay_ID = paste(Gene.Symbol, Drug, sep = '_')) %>%
+  select(Avg..LFC, Gene.Symbol, Construct.Barcode, Assay_ID) %>%
+  rename(Gene = Gene.Symbol, Guide.Sequence = Construct.Barcode) %>%
+  mutate(experiment = 'humanRES', organism = 'human')
+combined_data = bind_rows(mouseFC_precomb, humanFC_precomb, humanRES_precomb) %>%
+  inner_join(FORECasT_OOF_predictions, by=c('Guide.Sequence' = 'guide')) %>%
+  inner_join(All_Context, by = 'Guide.Sequence') %>%
+  inner_join(Design_Annotations, by = c('Guide.Sequence'='sgRNA.Sequence')) %>%
+  mutate(percentile = rank(Avg..LFC)/max(rank(Avg..LFC))) %>%
+  group_by(Assay_ID) %>%
+  rename(`OOF mutation rate`= OOF.Mutation.Rate) %>%
+  ungroup()
+combined_data['Assay_ID'] = factor(combined_data$Assay_ID, 
+                               levels = unique(combined_data$Assay_ID[order(unlist(combined_data['experiment']))])) 
+
+off_targ_rank = combined_data %>% filter(organism == 'human') %>% frank(X..Off.Target.Tier.I.Match.Bin.I.Matches, 
+                        X..Off.Target.Tier.II.Match.Bin.II.Matches,
+                        X..Off.Target.Tier.II.Match.Bin.III.Matches,
+                        X..Off.Target.Tier.II.Match.Bin.IV.Matches) %>%
+  percent_rank() %>%
+  data.frame() %>%
+  bind_cols(combined_data %>% filter(organism == 'human') %>% ungroup() %>% select(Guide.Sequence)) %>%
+  bind_rows(combined_data %>% filter(organism == 'mouse') %>% frank(X..Off.Target.Tier.I.Match.Bin.I.Matches, 
+                        X..Off.Target.Tier.II.Match.Bin.II.Matches,
+                        X..Off.Target.Tier.II.Match.Bin.III.Matches,
+                        X..Off.Target.Tier.II.Match.Bin.IV.Matches) %>%
+  percent_rank() %>%
+  data.frame() %>%
+  bind_cols(combined_data %>% filter(organism == 'mouse') %>% ungroup() %>% select(Guide.Sequence)))
+off_targ_rank = rename(off_targ_rank, `off_target_tier1_percentile` = `.`)
+
+combined_data_percentile = combined_data %>% group_by(Assay_ID) %>%
+  mutate(percentile = rank(Avg..LFC)/max(rank(Avg..LFC))) %>%
+  mutate(Target_Cut = percent_rank(`Target.Cut..`)*100) %>%
+  inner_join(off_targ_rank, by = 'Guide.Sequence') %>%
+  mutate(Target_Cut_Bin = cut(Target_Cut, c(0,20,80,101), include.lowest = TRUE))
+  
+
+current_train = combined_data_percentile %>%
+  filter(!(Assay_ID %in% c('Cd3e', 'CUL3_PLX', 'MED12_PLX', 'CD33_NB4', 'CD13_NB4')))
+```
+
+### Target Cut Site
+
+```{r, fig.width = 10, fig.height=10}
+ggplot(current_train) +
+  aes(x=Target_Cut, y=percentile) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = 'loess') +
+  theme_classic() +
+  theme(aspect.ratio = 1) +
+  xlab('Target Cut Site (%)') +
+  ylab('Activity Percentile') +
+  ggtitle('Guide Activity vs Target Cut Site') +
+  geom_vline(xintercept = 80, linetype = 'dashed') +
+  geom_vline(xintercept = 20, linetype = 'dashed') +
+  geom_hline(yintercept = 0.5) +
+
+  facet_wrap('Assay_ID') +
+  ylim(0, 1)
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/cut_smooth.pdf')
+```
+
+```{r}
+ggboxplot(current_train, x='Target_Cut_Bin', y='percentile', fill = 'Target_Cut_Bin') +
+  xlab('Target Cut Bin') +
+  ylab('Activity Percentile') +
+  facet_wrap('Assay_ID') +
+  stat_compare_means(comparisons = list(c('[0,20]', '(20,80]'), c('(80,101]', '(20,80]'))) +
+  ylim(0, 1.5) +
+  scale_fill_brewer(palette = 'Set3')
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/cut_pval.pdf')
+```
+
+
+### Off Target Effects
+```{r, fig.width=10, fig.height=10}
+ggplot(current_train) +
+  aes(x=off_target_tier1_percentile, y=percentile) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = 'loess') +
+  facet_wrap('Assay_ID') +
+  ylab('Activity Percentile') +
+  xlab('Off-Target Tier I percent-rank') +
+  theme_classic() +
+  theme(aspect.ratio = 1)
+```
+
+* Will not filter by off-target effects
+
+## Training Set Summary
+
+```{r}
+ggplot(current_train) +
+  aes(x= factor(NA), fill = factor(Assay_ID)) +
+  geom_bar(width = 1) +
+  coord_polar(theta = 'y') +
+  theme_minimal() +
+  xlab('') +
+  ylab('') +
+  labs(fill = 'Assay ID') +
+  theme(axis.text.y = element_blank()) +
+  ggtitle('Guides')
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/train_summary.pdf')
+```
+
+```{r}
+ggplot(current_train) +
+  aes(x=Avg..LFC, fill = experiment) +
+  facet_wrap('Assay_ID') + 
+  geom_density() +
+  theme_classic() +
+  geom_vline(xintercept = 0, linetype = 'dotted') 
+```
+
+
+
+```{r}
+percentile = ggplot(combined_data_percentile) +
+  aes(x=Avg..LFC, y = percentile, color = experiment) +
+  facet_wrap('Assay_ID') + 
+  geom_point(alpha = 0.5) +
+  theme_classic() +
+  geom_vline(xintercept = 0, linetype = 'dotted') 
+```
+
+```{r}
+write.csv(combined_data_percentile, '/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/FC_RES_TRAIN_ALL_0-100.csv')
+```
+
+```{r}
+rs2_data = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/RS2_data/V3_data.csv')
+diff_sum = length(unique(rs2_data$Sequence)) - sum(unique(rs2_data$Sequence) %in% combined_data$Guide.Sequence)
+diff = anti_join(rs2_data, combined_data, by = c('Sequence'='Guide.Sequence')) %>%
+  group_by(Target) %>%
+  summarise(n = n())
+rs2_3 = inner_join(rs2_data, combined_data, by = c('Sequence'='Guide.Sequence'))%>%
+  mutate(diff = abs(score_drug_gene_rank - percentile))
+ 
+rs2_3p = ggplot(rs2_3) +
+  aes(x=score_drug_gene_rank, y = percentile) +
+  geom_point(alpha = 0.2) +
+  stat_cor(method = 'spearman', color = 'blue') +
+  facet_wrap('Assay_ID')
+
+
+```
+
+***
+
+# Out Of Frame Mutation Rate
+
+### FORECasT and inDelphi Predict Similar OOF Mutation Rates 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+indelphi_preds = read.csv('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/raw/indelphi_OOF.csv')
+oof_data = indelphi_preds %>%
+  select('gRNA', 'Frameshift....') %>%
+  inner_join(current_train, by = c( 'gRNA'= 'Guide.Sequence')) %>%
+  distinct()
+oof_cors = oof_data %>%
+  group_by(Gene)  %>%
+  summarise(inDelphi = round(cor(Frameshift...., Avg..LFC, method = 'spearman'), 2),
+            FORECasT = round(cor(`OOF mutation rate`, Avg..LFC, method = 'spearman'), 2)) %>%
+  melt()
+```
+
+
+```{r}
+ggplot(oof_data) +
+  aes(x=Frameshift...., y=`OOF mutation rate`) +
+  geom_point(alpha=0.5) +
+  stat_cor(method = 'spearman', label.y.npc = 'bottom', label.x.npc = 'middle', color = 'blue') +
+  geom_smooth(method = 'lm') +
+  xlab('inDelphi OOF Mutation Rate') +
+  ylab('FORECasT OOF Mutation Rate') +
+  theme_classic() +
+  theme(aspect.ratio = 1) +
+  ggtitle('Training Set Predictions')
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/Training_Set_Predictions.pdf')
+
+```
+
+
+### FORECasT Correlates Better With On Target Activity for 11 out of 13 Genes
+
+```{r}
+ggplot(oof_cors) +
+  aes(y=variable, x = Gene, fill = value, label = value) +
+  geom_tile(color = 'black') +
+  scale_fill_viridis(option = 'C') +
+  theme_classic() +
+  coord_equal() +
+  geom_text() +
+  xlab('') +
+  ylab('Predictor') +
+  labs(fill = 'Spearman R') +
+  rotate_x_text(angle = 45) +
+  ggtitle('OOF rate vs. Avg. LFC')
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/OOF_HEAT.pdf')
+```
+
+### FORECasT Correlates Better When Considering All Guides 
+
+```{r}
+g1 = ggplot(oof_data) +
+  aes(x=percentile, y=`OOF mutation rate`) +
+  geom_point(alpha = 0.5) +
+  stat_cor(method = 'spearman', label.x.npc = 'middle', label.y.npc = 'bottom', color = 'red') +
+  geom_smooth(method = 'lm', color = 'red') +
+  xlab('Guide Activity Percentile') +
+  ylab('FORECasT OOF Mutation Rate') +
+  theme_classic() +
+  theme(aspect.ratio = 1) 
+```
+
+
+```{r}
+g2 = ggplot(oof_data) +
+  aes(x=percentile, y=`Frameshift....`) +
+  geom_point(alpha = 0.5) +
+  stat_cor(method = 'spearman', label.x.npc = 'middle', label.y.npc = 'bottom', color = 'blue') +
+  geom_smooth(method = 'lm', color = 'blue') +
+  xlab('Guide Activity Percentile') +
+  ylab('inDelphi OOF Mutation Rate') +
+  theme_classic() +
+  theme(aspect.ratio = 1) 
+g = grid.arrange(g1, g2, nrow = 1)
+ggsave('/Users/pdeweird/Documents/csci-e-29/final_project-PeterDeWeirdt/data/presentations/RD_12-5-18/indelphiVFORE.pdf', g)
+```
+
+
+
