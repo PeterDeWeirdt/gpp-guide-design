@@ -10,6 +10,7 @@ from sklearn import preprocessing
 import pickle
 from ..get_data import RS2CombData
 from sklearn import neural_network
+from sklearn import metrics
 
 
 @inherits(FeaturizeTrain) # Inherits Featurize Train's parameters
@@ -19,8 +20,8 @@ class CrossValidate(luigi.Task):
     folds = luigi.IntParameter(default=10)
     param_grid = luigi.DictParameter()
     requires = task.Requires()
-    scaler = task.Requirement(Standardize, activity_column ='score_drug_gene_rank',
-                                   kmer_column = '30mer')
+    scaler = task.Requirement(Standardize, activity_column ='percentile',
+                                   kmer_column = 'X30mer')
 
     featurized = task.Requirement(FeaturizeTrain)
 
@@ -50,7 +51,7 @@ class CrossValidate(luigi.Task):
         grid_search = model_selection.RandomizedSearchCV(model, dict(self.param_grid),
                                                    cv = self.folds,
                                                    scoring='neg_mean_squared_error',
-                                                         n_iter=40, n_jobs=3)
+                                                         n_iter=40, n_jobs=10)
         grid_search.fit(X_train, y)
         # Use path because we have to write binary (stack: localTarget pickle)
         with self.output().open('wb') as f:

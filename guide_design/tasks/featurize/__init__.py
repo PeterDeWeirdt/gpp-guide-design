@@ -1,5 +1,5 @@
-from ..get_data import RS2CombData, DoenchTestData, AchillesTestData
-from ..filter_data import FilteredRS2Data, FilteredAchillesData
+from ..get_data import RS2CombData, DoenchTestData, AchillesTestData, Gv2Test, RS3Train
+from ..filter_data import FilteredRS2Data, FilteredAchillesData, FilteredRS3Data
 import luigi
 from utils.luigi import task
 from utils.featurization import featurize_guides
@@ -9,7 +9,7 @@ import pickle
 from luigi.util import inherits
 
 class BaseFeaturize(luigi.Task):
-    __version__ = '0.6'
+    __version__ = '0.8'
     activity_column = luigi.Parameter()
     kmer_column = luigi.Parameter()
     features = luigi.DictParameter()
@@ -38,11 +38,24 @@ class BaseFeaturize(luigi.Task):
 
 
 class FeaturizeTrain(BaseFeaturize):
+    # ["Cd28", "Cd3e", "CD45", "Cd5", "Cd43", "H2-K", "Thy1",
+    #  "CD13_TF-1", "CD13_NB4", "CD33_NB4", "CD33_MOLM-13",
+    #  "CD15_MOLM-13", "CCDC101_AZD", "CUL3_PLX",
+    #  "HPRT1_6TG", "MED12_AZD", "MED12_PLX", "NF1_PLX", "NF2_PLX",
+    #  "TADA1_AZD", "TADA2B_AZD"]
 
-    filtered = task.Requirement(FilteredRS2Data)
-
-
-
+    filtered = task.Requirement(FilteredRS3Data,
+                                assays = ["CD45", "Cd28", "Cd5", "Cd43", "H2-K", "Thy1",
+                                          "CD13_TF-1", "CD33_MOLM-13",
+                                          "CD15_MOLM-13", "CCDC101_AZD",
+                                          "HPRT1_6TG", "MED12_AZD", "NF1_PLX", "NF2_PLX",
+                                          "TADA1_AZD", "TADA2B_AZD"],
+                                assays_end = ["CD45", "Cd5", "Cd43", "H2-K", "Thy1",
+                                               "CD33_MOLM-13", "HPRT1_6TG", "MED12_AZD",
+                                                "NF1_PLX", "NF2_PLX", "TADA2B_AZD"]
+,
+                                assays_start = ["CD13_TF-1","CD15_MOLM-13", "CD45"],
+                                perc_pep_end = 80, perc_pep_start = 20)
 
 class FeaturizeDoenchTest(BaseFeaturize):
 
@@ -50,7 +63,7 @@ class FeaturizeDoenchTest(BaseFeaturize):
 
 class FeaturizeAchillesTest(BaseFeaturize):
 
-    filtered = task.Requirement(FilteredAchillesData)
+    filtered = task.Requirement(Gv2Test)
 
 
 class Standardize(luigi.Task):

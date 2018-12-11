@@ -54,3 +54,13 @@ class OofGv2(luigi.Task):
     __version__ = '0.1'
     def output(self):
         return luigi.LocalTarget('./data/raw/Gv2_oof_scores.csv')
+
+class RS3Train(luigi.Task):
+    __version__ = 'ALL'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/FC_RES_TRAIN_ALL_0-100.csv')
+
+class Gv2Test(luigi.Task):
+    __version__ = '0.1'
+    def output(self):
+        return luigi.LocalTarget('./data/raw/Gv2_TEST_V1.csv')

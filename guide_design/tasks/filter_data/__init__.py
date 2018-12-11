@@ -1,4 +1,4 @@
-from ..get_data import RS2CombData, AchillesTestData, OofFc, OofGv2, OofRes
+from ..get_data import RS2CombData, AchillesTestData, OofFc, OofGv2, OofRes, RS3Train
 import luigi
 from utils.luigi import task
 import pandas as pd
@@ -53,3 +53,27 @@ class FilteredAchillesData(luigi.Task):
                      .drop_duplicates())
         with self.output().open('w') as f:
             achilles_oof_data.to_csv(f)
+
+class FilteredRS3Data(luigi.Task):
+    __version__ = '0.3'
+    requires = task.Requires()
+    rs3_file = task.Requirement(RS3Train)
+    assays = luigi.ListParameter()
+    assays_end = luigi.ListParameter()
+    assays_start = luigi.ListParameter()
+    perc_pep_end = luigi.IntParameter()
+    perc_pep_start = luigi.IntParameter()
+    output = task.SaltedOutput(base_dir='./data/filtered', ext='.csv')
+
+    def run(self):
+        with self.rs3_file.output().open('r') as f:
+            rs3_data = pd.read_csv(f)
+        filtered_rs3_data = rs3_data[(rs3_data.Assay_ID.isin(self.assays)) &
+                                     (((rs3_data.Target_Cut < self.perc_pep_end) &
+                                       (rs3_data.Assay_ID.isin(self.assays_end))) |
+                                     ~rs3_data.Assay_ID.isin(self.assays_end)) &
+                                     (((rs3_data.Target_Cut > self.perc_pep_start) &
+                                       rs3_data.Assay_ID.isin(self.assays_start)) |
+                                      ~rs3_data.Assay_ID.isin(self.assays_start))]
+        with self.output().open('w') as f:
+            filtered_rs3_data.to_csv(f)

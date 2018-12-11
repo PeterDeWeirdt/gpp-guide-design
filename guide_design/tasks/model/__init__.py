@@ -22,17 +22,17 @@ class BestModel(luigi.Task):
     kmer_column = luigi.Parameter()
 
     requires = task.Requires()
-    cv_lasso = task.Requirement(CrossValidate, model_str='lasso',
-                                param_grid = {'alpha': np.logspace(-4, 0, 100).tolist()})
+    # cv_lasso = task.Requirement(CrossValidate, model_str='lasso',
+    #                             param_grid = {'alpha': np.logspace(-4, 0, 100).tolist()})
     cv_gb = task.Requirement(CrossValidate, model_str='GB',
                              param_grid = {'max_depth': [int(x) for x in np.linspace(2, 40, 30)],
                                           'max_features': np.linspace(0.01, 0.3, 50).tolist(),
                                           'min_samples_split': np.linspace(0.01, 0.4, 50).tolist(),
                                           'subsample': np.linspace(0.6, 1, 50).tolist(),
                                            'alpha': np.linspace(0.5,0.99, 50).tolist()})
-    cv_nn = task.Requirement(CrossValidate, model_str = 'NN',
-                             param_grid = {'alpha':np.logspace(-4, -0.01, 100).tolist(),
-                                           'learning_rate_init': np.linspace(0.001, 0.3, 50).tolist()})
+    # cv_nn = task.Requirement(CrossValidate, model_str = 'NN',
+    #                          param_grid = {'alpha':np.logspace(-4, -0.01, 100).tolist(),
+    #                                        'learning_rate_init': np.linspace(0.001, 0.3, 50).tolist()})
     # cv_gb = task.Requirement(CrossValidate, model_str = 'GB',
     #                         param_grid = {'alpha': [0.5]})
 
@@ -67,8 +67,8 @@ class ModelCoefficients(luigi.Task):
 
     requires = task.Requires()
 
-    model = task.Requirement(BestModel, activity_column ='score_drug_gene_rank',
-                                  kmer_column = '30mer')
+    model = task.Requirement(BestModel, activity_column ='percentile',
+                                  kmer_column = 'X30mer')
     test_mat = task.Requirement(FeaturizeAchillesTest, activity_column='sgRNA.measured.value',
                                 kmer_column='X30mer')
     output = task.SaltedOutput(base_dir='data/models', ext='.csv')
@@ -98,12 +98,12 @@ class PredictModel(luigi.Task):
     true_val = luigi.BoolParameter(default=True)
 
     requires = task.Requires()
-    model = task.Requirement(BestModel, activity_column ='score_drug_gene_rank',
-                                  kmer_column = '30mer')
+    model = task.Requirement(BestModel, activity_column ='percentile',
+                                  kmer_column = 'X30mer')
     test_mat = task.Requirement(FeaturizeAchillesTest, activity_column='sgRNA.measured.value',
                                 kmer_column='X30mer')
-    scaler = task.Requirement(Standardize, activity_column ='score_drug_gene_rank',
-                                   kmer_column = '30mer')
+    scaler = task.Requirement(Standardize, activity_column ='percentile',
+                                   kmer_column = 'X30mer')
 
     output = task.SaltedOutput(base_dir='data/predictions', ext='.csv')
 

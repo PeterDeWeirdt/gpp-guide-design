@@ -10,6 +10,21 @@ import numpy as np
 
 if __name__ == '__main__':
     stage = 'coefs'
+    feats = {'Pos. Ind. 1mer': True,
+            'Pos. Ind. 2mer': True,
+            'Pos. Ind. 3mer': False,
+            'Pos. Ind. Zipper': True,
+            'Pos. Dep. 1mer': True,
+            'Pos. Dep. 2mer': True,
+            'Pos. Dep. 3mer': False,
+            'Pos. Dep. Zipper': True,
+            'Pos. Ind. Rep.': True,
+            'GC content': True,
+            'Tm': True,
+            'Cas9 PAM': False,
+            'Physio': True,
+            'OOF Mutation Rate': True,
+            'Double Zipper': False}
     if stage == 'feat':
         luigi.build([FeaturizeTrain(activity_column ='score_drug_gene_rank',
                                     kmer_column = '30mer',
@@ -39,41 +54,13 @@ if __name__ == '__main__':
     elif stage == 'model':
         luigi.build([BestModel()], local_scheduler=True, workers=2)
     elif stage == 'predict':
-        luigi.build([PredictModel(features={'Pos. Ind. 1mer': True,
-                                            'Pos. Ind. 2mer': True,
-                                            'Pos. Ind. 3mer': False,
-                                            'Pos. Ind. Zipper': True,
-                                            'Pos. Dep. 1mer': True,
-                                            'Pos. Dep. 2mer': True,
-                                            'Pos. Dep. 3mer': False,
-                                            'Pos. Dep. Zipper': True,
-                                            'Pos. Ind. Rep.': True,
-                                            'GC content': True,
-                                            'Tm': True,
-                                            'Cas9 PAM': False,
-                                            'Physio': True,
-                                            'OOF Mutation Rate': False,
-                                            'Double Zipper': False},
+        luigi.build([PredictModel(features=feats,
                                 guide_start = 5, guide_length = 20,
-                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers=3)
+                                pam_start = 25, pam_length = 3)], local_scheduler=True, workers=1)
     elif stage == 'fasta':
         luigi.build([Fasta(seq_col = '30mer')], local_scheduler=True)
     elif stage == 'coefs':
-        luigi.build([ModelCoefficients(features={'Pos. Ind. 1mer': True,
-                                            'Pos. Ind. 2mer': True,
-                                            'Pos. Ind. 3mer': False,
-                                            'Pos. Ind. Zipper': True,
-                                            'Pos. Dep. 1mer': True,
-                                            'Pos. Dep. 2mer': True,
-                                            'Pos. Dep. 3mer': False,
-                                            'Pos. Dep. Zipper': True,
-                                            'Pos. Ind. Rep.': True,
-                                            'GC content': True,
-                                            'Tm': True,
-                                            'Cas9 PAM': False,
-                                            'Physio': True,
-                                            'OOF Mutation Rate': True,
-                                            'Double Zipper': False},
+        luigi.build([ModelCoefficients(features=feats,
                                 guide_start = 5, guide_length = 20,
                                 pam_start = 25, pam_length = 3)], local_scheduler=True, workers = 1)
     elif stage == 'filter':
