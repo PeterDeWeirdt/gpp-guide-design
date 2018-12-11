@@ -9,7 +9,7 @@ import numpy as np
 
 
 if __name__ == '__main__':
-    stage = 'coefs'
+    stage = 'predict'
     feats = {'Pos. Ind. 1mer': True,
             'Pos. Ind. 2mer': True,
             'Pos. Ind. 3mer': False,
