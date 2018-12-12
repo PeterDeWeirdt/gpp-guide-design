@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.com/PeterDeWeirdt/gpp-guide-design.svg?branch=master
+    :target: https://travis-ci.com/PeterDeWeirdt/gpp-guide-design
+
 =============================
 Broad GPP SpCas9 Guide Design
 =============================
