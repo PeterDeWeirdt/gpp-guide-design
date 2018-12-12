@@ -25,7 +25,7 @@ In a local directory, use
 
 .. code-block:: bash
 
-    git clone git@github.com:PeterDeWeirdt/gpp-guide-design.git
+    git clone https://github.com/PeterDeWeirdt/gpp-guide-design.git
 
 For a completely reproducible environment install Docker_ and
 `Docker Compose`_. If you use the professional edition of PyCharm you
