@@ -2,21 +2,14 @@
 Broad GPP SpCas9 Guide Design
 =============================
 
-
-
-
-
-
 Build machine learning Models to predict CRISPR Cas9 guide activity.
-
-
 
 Features
 --------
 
 * Luigi for task workflow organization
-* Salted outputs for model version control
-
+* Salted outputs for file version control
+* Docker for a reproducible environment
 
 Usage
 -----
@@ -31,17 +24,30 @@ In a local directory, use
 
     git clone git@github.com:PeterDeWeirdt/gpp-guide-design.git
 
-Then configure the app using the py3.6_venv included in this repo.
-We recommend PyCharm_ for configuration_.
+For a completely reproducible environment install Docker_ and
+`Docker Compose`_. If you use the professional edition of PyCharm you
+can `set it up`_ to use docker-compose as the default interpreter,
+otherwise you can use the command line.
 
-.. _configuration: https://www.jetbrains.com/help/pycharm-edu/configuring-local-python-interpreters.html.
-.. _PyCharm: https://www.jetbrains.com/pycharm/download/#section=mac
+.. _Docker: https://docs.docker.com/install/#reporting-security-issues
+.. _`Docker Compose`: https://docs.docker.com/compose/install/
+.. _`set it up`: https://www.jetbrains.com/help/pycharm/docker-compose.html
 
 Example
 ^^^^^^^
-After configuration, you can build models from the included training data and predict
-on our test data by running main.py.
 
+Once these dependencies are installed, in the gpp-guide-design directory
+you can build your environment
+
+.. code-block:: bash
+
+    docker-compose build
+
+And run the example workflow
+
+.. code-block:: bash
+
+    docker-compose run app python main.py
 
 Credits
 -------
