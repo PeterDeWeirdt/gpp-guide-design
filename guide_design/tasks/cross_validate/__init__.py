@@ -51,7 +51,7 @@ class CrossValidate(luigi.Task):
         grid_search = model_selection.RandomizedSearchCV(model, dict(self.param_grid),
                                                    cv = self.folds,
                                                    scoring='neg_mean_squared_error',
-                                                         n_iter=40, n_jobs=10)
+                                                         n_iter=20, n_jobs=1)
         grid_search.fit(X_train, y)
         # Use path because we have to write binary (stack: localTarget pickle)
         with self.output().open('wb') as f:

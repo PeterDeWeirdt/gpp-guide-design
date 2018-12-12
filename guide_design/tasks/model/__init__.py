@@ -22,14 +22,18 @@ class BestModel(luigi.Task):
     kmer_column = luigi.Parameter()
 
     requires = task.Requires()
-    # cv_lasso = task.Requirement(CrossValidate, model_str='lasso',
-    #                             param_grid = {'alpha': np.logspace(-4, 0, 100).tolist()})
-    cv_gb = task.Requirement(CrossValidate, model_str='GB',
-                             param_grid = {'max_depth': [int(x) for x in np.linspace(2, 40, 30)],
-                                          'max_features': np.linspace(0.01, 0.3, 50).tolist(),
-                                          'min_samples_split': np.linspace(0.01, 0.4, 50).tolist(),
-                                          'subsample': np.linspace(0.6, 1, 50).tolist(),
-                                           'alpha': np.linspace(0.5,0.99, 50).tolist()})
+
+    example = True
+    if example:
+        cv_lasso = task.Requirement(CrossValidate, model_str='lasso',
+                                    param_grid = {'alpha': np.logspace(-3, 0, 100).tolist()})
+    else:
+        cv_gb = task.Requirement(CrossValidate, model_str='GB',
+                                 param_grid = {'max_depth': [int(x) for x in np.linspace(2, 40, 30)],
+                                              'max_features': np.linspace(0.01, 0.3, 50).tolist(),
+                                              'min_samples_split': np.linspace(0.01, 0.4, 50).tolist(),
+                                              'subsample': np.linspace(0.6, 1, 50).tolist(),
+                                               'alpha': np.linspace(0.5,0.99, 50).tolist()})
     # cv_nn = task.Requirement(CrossValidate, model_str = 'NN',
     #                          param_grid = {'alpha':np.logspace(-4, -0.01, 100).tolist(),
     #                                        'learning_rate_init': np.linspace(0.001, 0.3, 50).tolist()})
