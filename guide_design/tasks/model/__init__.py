@@ -8,7 +8,9 @@ from ..featurize import FeaturizeTrain, FeaturizeDoenchTest, Standardize, Featur
 from ..featurize import DoenchTestData
 import pandas as pd
 from sklearn import ensemble
+from sklearn import linear_model
 from sklearn import preprocessing
+from copy import deepcopy
 
 
 class BestModel(luigi.Task):
@@ -60,9 +62,31 @@ class BestModel(luigi.Task):
         with self.output().open('wb') as f:
             pickle.dump(best_estimator, f)
 
+def score_coefs(X, y, B, a):
+    """Rank each model coefficient by fraction of variance explained
+
+    :param X: predictor matrix
+    :param y: response matrix
+    :param B: model coefficients
+    :return ranked_coefs: vector of variance explained for each coefficient in B
+    """
+    model_residuals = np.matmul(X, B) + a - y
+    model_variance = np.var(model_residuals)
+    coef_score = []
+    for i in range(len(B)):
+        if B[i] == 0:
+            coef_score.append(0)
+        else:
+            curr_B = deepcopy(B)
+            curr_B[i] = 0
+            curr_residuals = np.matmul(X, curr_B) + a - y
+            curr_variance = np.var(curr_residuals)
+            coef_score.append(1-model_variance/curr_variance)
+    return coef_score*np.sign(B)
+
 
 class ModelCoefficients(luigi.Task):
-    __version__ = '0.2'
+    __version__ = '0.3'
     features = luigi.DictParameter()
     guide_start = luigi.IntParameter()
     guide_length = luigi.IntParameter()
@@ -73,19 +97,26 @@ class ModelCoefficients(luigi.Task):
 
     model = task.Requirement(BestModel, activity_column ='percentile',
                                   kmer_column = 'X30mer')
-    test_mat = task.Requirement(FeaturizeAchillesTest, activity_column='sgRNA.measured.value',
-                                kmer_column='X30mer')
+    scaler = task.Requirement(Standardize, activity_column='percentile',
+                              kmer_column='X30mer')
+    train_mat = task.Requirement(FeaturizeTrain, activity_column = 'percentile',
+                                 kmer_column = 'X30mer')
     output = task.SaltedOutput(base_dir='data/models', ext='.csv')
 
     def run(self):
         reqs = self.requires()
         with reqs['model'].output().open('rb') as f:
             model = pickle.load(f)
-        with reqs['test_mat'].output().open('r') as f:
-            test_mat = pd.read_csv(f)
-        X = test_mat[test_mat.columns.difference(['activity', 'kmer'])]
+        with reqs['train_mat'].output().open('r') as f:
+            train_mat = pd.read_csv(f)
+        with reqs['scaler'].output().open('r') as f:
+            scaler = pickle.load(f)
+        X = train_mat[train_mat.columns.difference(['activity', 'kmer'])]
         if model.__class__ == ensemble.GradientBoostingRegressor:
             importances = model.feature_importances_
+        elif model.__class__ == linear_model.Lasso:
+            importances = score_coefs(scaler.transform(X), train_mat['activity'],
+                                      model.coef_, model.intercept_)
         feature_importances = pd.DataFrame({'feature': X.keys(),
                                             'importance': importances})
         with self.output().open('w') as f:
