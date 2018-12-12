@@ -13,16 +13,24 @@ def test_guide_seq():
 
 def test_featurization():
     features = {'Pos. Ind. 1mer': True,
-                'Pos. Ind. 2mer': True,
-                'Pos. Ind. 3mer': True,
-                'Pos. Dep. 1mer': True,
-                'Pos. Dep. 2mer': True,
-                'Pos. Dep. 3mer': True,
-                'GC content': True,
-                'Tm': True}
+             'Pos. Ind. 2mer': True,
+             'Pos. Ind. 3mer': True,
+             'Pos. Ind. Zipper': True,
+             'Pos. Dep. 1mer': True,
+             'Pos. Dep. 2mer': True,
+             'Pos. Dep. 3mer': True,
+             'Pos. Dep. Zipper': True,
+             'Pos. Ind. Rep.': True,
+             'GC content': True,
+             'Tm': False,
+             'Cas9 PAM': True,
+             'Physio': True,
+             'OOF Mutation Rate': False,
+             'Double Zipper': True}
+
     kmers = pd.Series(['ACTGGG'])
     one_hot = featurize_guides(kmers, features, pam_start=2,
                                       pam_length=1, guide_start=3, guide_length=3).iloc[0]
     assert (one_hot['+1G'] == 1) & (one_hot['TGG'] == 1.0) & (one_hot['g_or_c'] == 2/3) &\
-    (one_hot['Tm, guide'] != 0) & (one_hot['1TG'] == 1) & (one_hot['2GGG'] == 1) &\
+    (one_hot['bendability'] != 0) & (one_hot['1TG'] == 1) & (one_hot['2GGG'] == 1) &\
     (one_hot['G'] == 2/3) & (one_hot['TG'] == 1/2)
