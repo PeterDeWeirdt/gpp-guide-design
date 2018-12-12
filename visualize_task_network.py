@@ -32,7 +32,7 @@ def build_task_graph(hash, hash_data, node_info, sources, targets, old_tuple, po
 
 if __name__ == '__main__':
     hash = 'f27f1337'
-    hash_data = pd.read_table('./data/hash.txt')
+    hash_data = pd.read_table('./data/hash.txt').drop_duplicates()
     node_info, sources, targets, position = build_task_graph(hash, hash_data,
                                                              {}, [], [], (0,1), {})
     graph_df = pd.DataFrame({'target': targets, 'source': sources}).drop_duplicates()
@@ -46,16 +46,23 @@ if __name__ == '__main__':
             node_color[node] = 'Interim'
     nx.set_node_attributes(g, node_info, 'Node Info')
     nx.set_node_attributes(g, node_color, 'Node Type')
-    write_dot(g, 'data/hash_nets/' + hash + '.dot')
-    plt.title(hash)
-    pos = graphviz_layout(g, prog='dot')
-    nx.draw(g, pos, with_labels=True, arrows = True)
-    plt.savefig('data/hash_nets/' + hash + '.pdf')
+    docker = True
+    if not docker:
+        write_dot(g, 'data/hash_nets/' + hash + '.dot')
+        plt.title(hash)
+        pos = graphviz_layout(g, prog='dot')
+        nx.draw(g, pos, with_labels=True, arrows = True)
+        plt.savefig('data/hash_nets/' + hash + '.pdf')
 
     padding = dict(x=(-1.2, 1.2), y=(-1.2, 1.2))
     renderer = hv.renderer('bokeh').instance(fig='html', holomap='auto')
-    g_hv = hv.Graph.from_networkx(g, nx.layout.kamada_kawai_layout).redim.range(**padding) \
-        .options(color_index='Node Type', cmap=['#e41a1c', '#377eb8'], directed = True,
-                 arrowhead_length=0.015, node_alpha =0.4, edge_line_width = 0.7,
-                 node_size = 10)
+    if docker:
+        g_hv = hv.Graph.from_networkx(g, nx.layout.kamada_kawai_layout).redim.range(**padding) \
+            .options(color_index='Node Type', cmap=['#e41a1c', '#377eb8'], node_alpha=0.4, edge_line_width=0.7,
+                     node_size=10)
+    else:
+        g_hv = hv.Graph.from_networkx(g, nx.layout.kamada_kawai_layout).redim.range(**padding) \
+            .options(color_index='Node Type', cmap=['#e41a1c', '#377eb8'], directed = True,
+                     arrowhead_length=0.015, node_alpha =0.4, edge_line_width = 0.7,
+                     node_size = 10)
     renderer.save(g_hv, 'data/hash_nets/' + hash)

@@ -13,6 +13,10 @@ xlrd = "*"
 azimuth = "*"
 numpy = "*"
 scikit-learn = "*"
+networkx = "*"
+pygraphviz = "*"
+bokeh = "*"
+holoviews = "*"
 
 [dev-packages]
 pytest = "*"
